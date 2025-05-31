@@ -1,0 +1,281 @@
+#!/usr/bin/env python3
+"""
+JEE Progress Tracker
+A comprehensive tool to track JEE preparation progress across Physics, Chemistry, and Mathematics
+"""
+
+import json
+import os
+from datetime import datetime, date
+from typing import Dict, List, Any
+import argparse
+
+class JEEProgressTracker:
+    def __init__(self, data_file: str = "jee_progress.json"):
+        self.data_file = data_file
+        self.data = self.load_data()
+        
+        # JEE syllabus structure
+        self.syllabus = {
+            "Physics": {
+                "Mechanics": ["Kinematics", "Laws of Motion", "Work Energy Power", "Rotational Motion", "Gravitation"],
+                "Thermodynamics": ["Heat Transfer", "Laws of Thermodynamics", "Kinetic Theory"],
+                "Waves & Oscillations": ["SHM", "Wave Motion", "Sound Waves"],
+                "Electromagnetism": ["Electrostatics", "Current Electricity", "Magnetic Effects", "Electromagnetic Induction", "AC Circuits"],
+                "Optics": ["Ray Optics", "Wave Optics"],
+                "Modern Physics": ["Atomic Structure", "Nuclear Physics", "Dual Nature of Matter"]
+            },
+            "Chemistry": {
+                "Physical Chemistry": ["Atomic Structure", "Chemical Bonding", "Thermodynamics", "Chemical Equilibrium", "Ionic Equilibrium", "Electrochemistry", "Chemical Kinetics"],
+                "Inorganic Chemistry": ["Periodic Table", "s-Block", "p-Block", "d-Block", "f-Block", "Coordination Compounds"],
+                "Organic Chemistry": ["Hydrocarbons", "Functional Groups", "Biomolecules", "Polymers", "Organic Reactions"]
+            },
+            "Mathematics": {
+                "Algebra": ["Quadratic Equations", "Complex Numbers", "Sequences & Series", "Permutations & Combinations", "Binomial Theorem", "Matrices & Determinants"],
+                "Coordinate Geometry": ["Straight Lines", "Circles", "Parabola", "Ellipse", "Hyperbola"],
+                "Calculus": ["Limits", "Derivatives", "Applications of Derivatives", "Integrals", "Applications of Integrals", "Differential Equations"],
+                "Trigonometry": ["Ratios & Functions", "Identities", "Equations", "Inverse Functions"],
+                "Vectors & 3D": ["Vector Algebra", "3D Geometry"],
+                "Statistics & Probability": ["Statistics", "Probability"]
+            }
+        }
+
+    def load_data(self) -> Dict[str, Any]:
+        """Load progress data from JSON file"""
+        if os.path.exists(self.data_file):
+            try:
+                with open(self.data_file, 'r') as f:
+                    return json.load(f)
+            except (json.JSONDecodeError, FileNotFoundError):
+                pass
+        
+        # Initialize default structure
+        return {
+            "subjects": {},
+            "daily_logs": {},
+            "target_dates": {},
+            "study_hours": {},
+            "test_scores": []
+        }
+
+    def save_data(self):
+        """Save progress data to JSON file"""
+        with open(self.data_file, 'w') as f:
+            json.dump(self.data, f, indent=2, default=str)
+
+    def initialize_subject(self, subject: str):
+        """Initialize progress tracking for a subject"""
+        if subject not in self.data["subjects"]:
+            self.data["subjects"][subject] = {}
+            
+        for chapter, topics in self.syllabus[subject].items():
+            if chapter not in self.data["subjects"][subject]:
+                self.data["subjects"][subject][chapter] = {}
+            
+            for topic in topics:
+                if topic not in self.data["subjects"][subject][chapter]:
+                    self.data["subjects"][subject][chapter][topic] = {
+                        "status": "not_started",  # not_started, in_progress, completed, revision
+                        "confidence": 0,  # 1-10 scale
+                        "last_studied": None,
+                        "time_spent": 0,  # in hours
+                        "notes": "",
+                        "practice_problems": 0,
+                        "problems_solved": 0
+                    }
+
+    def update_topic_progress(self, subject: str, chapter: str, topic: str, 
+                            status: str = None, confidence: int = None, 
+                            time_spent: float = None, notes: str = None,
+                            problems_solved: int = None):
+        """Update progress for a specific topic"""
+        self.initialize_subject(subject)
+        
+        topic_data = self.data["subjects"][subject][chapter][topic]
+        
+        if status:
+            topic_data["status"] = status
+        if confidence is not None:
+            topic_data["confidence"] = max(0, min(10, confidence))
+        if time_spent is not None:
+            topic_data["time_spent"] += time_spent
+        if notes:
+            topic_data["notes"] = notes
+        if problems_solved is not None:
+            topic_data["problems_solved"] += problems_solved
+            
+        topic_data["last_studied"] = datetime.now().isoformat()
+        self.save_data()
+
+    def log_daily_study(self, subject: str, hours: float, topics_covered: List[str], notes: str = ""):
+        """Log daily study session"""
+        today = date.today().isoformat()
+        
+        if today not in self.data["daily_logs"]:
+            self.data["daily_logs"][today] = []
+            
+        self.data["daily_logs"][today].append({
+            "subject": subject,
+            "hours": hours,
+            "topics": topics_covered,
+            "notes": notes,
+            "timestamp": datetime.now().isoformat()
+        })
+        
+        # Update total study hours
+        if subject not in self.data["study_hours"]:
+            self.data["study_hours"][subject] = 0
+        self.data["study_hours"][subject] += hours
+        
+        self.save_data()
+
+    def add_test_score(self, test_name: str, subject: str, score: float, max_score: float, date_taken: str = None):
+        """Add test score"""
+        if date_taken is None:
+            date_taken = date.today().isoformat()
+            
+        self.data["test_scores"].append({
+            "test_name": test_name,
+            "subject": subject,
+            "score": score,
+            "max_score": max_score,
+            "percentage": (score / max_score) * 100,
+            "date": date_taken
+        })
+        self.save_data()
+
+    def get_subject_progress(self, subject: str) -> Dict[str, Any]:
+        """Get comprehensive progress report for a subject"""
+        if subject not in self.data["subjects"]:
+            return {"error": f"No data found for {subject}"}
+            
+        subject_data = self.data["subjects"][subject]
+        total_topics = 0
+        completed_topics = 0
+        in_progress_topics = 0
+        total_confidence = 0
+        total_time = 0
+        
+        chapter_progress = {}
+        
+        for chapter, topics in subject_data.items():
+            chapter_total = len(topics)
+            chapter_completed = 0
+            chapter_confidence = 0
+            
+            for topic, data in topics.items():
+                total_topics += 1
+                total_time += data["time_spent"]
+                
+                if data["status"] == "completed":
+                    completed_topics += 1
+                    chapter_completed += 1
+                elif data["status"] == "in_progress":
+                    in_progress_topics += 1
+                    
+                total_confidence += data["confidence"]
+                chapter_confidence += data["confidence"]
+            
+            chapter_progress[chapter] = {
+                "completion_rate": (chapter_completed / chapter_total) * 100 if chapter_total > 0 else 0,
+                "avg_confidence": chapter_confidence / chapter_total if chapter_total > 0 else 0
+            }
+        
+        return {
+            "total_topics": total_topics,
+            "completed_topics": completed_topics,
+            "in_progress_topics": in_progress_topics,
+            "completion_rate": (completed_topics / total_topics) * 100 if total_topics > 0 else 0,
+            "avg_confidence": total_confidence / total_topics if total_topics > 0 else 0,
+            "total_study_time": total_time,
+            "chapter_progress": chapter_progress
+        }
+
+    def generate_study_plan(self, days_until_exam: int) -> Dict[str, Any]:
+        """Generate a study plan based on current progress"""
+        plan = {"daily_schedule": [], "priority_topics": []}
+        
+        # Find topics that need attention
+        for subject in ["Physics", "Chemistry", "Mathematics"]:
+            if subject in self.data["subjects"]:
+                for chapter, topics in self.data["subjects"][subject].items():
+                    for topic, data in topics.items():
+                        if data["status"] in ["not_started", "in_progress"] or data["confidence"] < 7:
+                            priority = 10 - data["confidence"] if data["confidence"] > 0 else 10
+                            plan["priority_topics"].append({
+                                "subject": subject,
+                                "chapter": chapter,
+                                "topic": topic,
+                                "priority": priority,
+                                "confidence": data["confidence"]
+                            })
+        
+        # Sort by priority
+        plan["priority_topics"].sort(key=lambda x: x["priority"], reverse=True)
+        
+        return plan
+
+    def display_dashboard(self):
+        """Display a comprehensive dashboard"""
+        print("=" * 60)
+        print("JEE PROGRESS TRACKER DASHBOARD")
+        print("=" * 60)
+        
+        for subject in ["Physics", "Chemistry", "Mathematics"]:
+            progress = self.get_subject_progress(subject)
+            if "error" not in progress:
+                print(f"\n📚 {subject.upper()}")
+                print(f"   Completion: {progress['completion_rate']:.1f}%")
+                print(f"   Confidence: {progress['avg_confidence']:.1f}/10")
+                print(f"   Study Time: {progress['total_study_time']:.1f} hours")
+                
+                # Chapter breakdown
+                for chapter, data in progress['chapter_progress'].items():
+                    print(f"   • {chapter}: {data['completion_rate']:.0f}% complete")
+        
+        # Recent study sessions
+        print(f"\n📅 RECENT STUDY SESSIONS")
+        recent_dates = sorted(self.data["daily_logs"].keys())[-5:] if self.data["daily_logs"] else []
+        for date_str in recent_dates:
+            total_hours = sum(log["hours"] for log in self.data["daily_logs"][date_str])
+            print(f"   {date_str}: {total_hours:.1f} hours")
+        
+        # Test scores
+        if self.data["test_scores"]:
+            print(f"\n📊 RECENT TEST SCORES")
+            recent_tests = sorted(self.data["test_scores"], key=lambda x: x["date"])[-5:]
+            for test in recent_tests:
+                print(f"   {test['test_name']} ({test['subject']}): {test['percentage']:.1f}%")
+
+def main():
+    parser = argparse.ArgumentParser(description="JEE Progress Tracker")
+    parser.add_argument("--dashboard", action="store_true", help="Show dashboard")
+    parser.add_argument("--subject", help="Subject to work with")
+    parser.add_argument("--chapter", help="Chapter name")
+    parser.add_argument("--topic", help="Topic name")
+    parser.add_argument("--status", help="Update status (not_started/in_progress/completed/revision)")
+    parser.add_argument("--confidence", type=int, help="Confidence level (1-10)")
+    parser.add_argument("--hours", type=float, help="Hours studied")
+    parser.add_argument("--log-study", action="store_true", help="Log study session")
+    
+    args = parser.parse_args()
+    
+    tracker = JEEProgressTracker()
+    
+    if args.dashboard:
+        tracker.display_dashboard()
+    elif args.log_study and args.subject and args.hours:
+        topics = [args.topic] if args.topic else []
+        tracker.log_daily_study(args.subject, args.hours, topics)
+        print(f"✅ Logged {args.hours} hours of {args.subject} study")
+    elif args.subject and args.chapter and args.topic:
+        tracker.update_topic_progress(
+            args.subject, args.chapter, args.topic,
+            status=args.status, confidence=args.confidence, time_spent=args.hours
+        )
+        print(f"✅ Updated progress for {args.subject} > {args.chapter} > {args.topic}")
+    else:
+        tracker.display_dashboard()
+
+if __name__ == "__main__":
+    main()
