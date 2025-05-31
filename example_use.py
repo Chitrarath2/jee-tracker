@@ -193,4 +193,13 @@ if __name__ == "__main__":
             print("Usage:")
             print("  python example_usage.py --demo           # Run full demo")
             print("  python example_usage.py --create-sample  # Create sample data")
-            print("  python example_usage.py --sample-dashboard # Show
+            print("  python example_usage.py --sample-dashboard # Show sample dashboard")
+    else:
+        print("🚀 JEE Progress Tracker - Example Usage")
+        print("=" * 50)
+        print("Available commands:")
+        print("  --demo           : Run comprehensive demo")
+        print("  --create-sample  : Create sample data file")
+        print("  --sample-dashboard : Show dashboard with sample data")
+        print("\nFor basic usage, run:")
+        print("  python jee_tracker.py --dashboard")
