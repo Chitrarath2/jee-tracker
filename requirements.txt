@@ -1,0 +1,8 @@
+# JEE Progress Tracker Dependencies
+# Core dependencies - using only Python standard library
+# No external dependencies required for basic functionality
+
+# Optional dependencies for enhanced features:
+# matplotlib>=3.5.0  # For generating progress charts
+# pandas>=1.3.0      # For data analysis and export
+# tabulate>=0.8.9    # For better table formatting
