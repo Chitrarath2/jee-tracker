@@ -1,0 +1,44 @@
+name: Test JEE Progress Tracker
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.8, 3.9, "3.10", "3.11"]
+
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v3
+      with:
+        python-version: ${{ matrix.python-version }}
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    
+    - name: Test basic functionality
+      run: |
+        python -c "from jee_tracker import JEEProgressTracker; tracker = JEEProgressTracker('test.json'); print('✅ Import successful')"
+        python jee_tracker.py --dashboard
+        python example_usage.py --create-sample
+        python example_usage.py --sample-dashboard
+    
+    - name: Test command line interface
+      run: |
+        python jee_tracker.py --subject Physics --chapter Mechanics --topic Kinematics --status completed --confidence 8
+        python jee_tracker.py --log-study --subject Mathematics --hours 2 --topic "Algebra"
+        python jee_tracker.py --dashboard
+    
+    - name: Clean up test files
+      run: |
+        rm -f test.json sample_progress.json jee_progress.json
